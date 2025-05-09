@@ -56,4 +56,10 @@ int bind_cpu(int cpu, cpu_set_t *old_context);
  */
 int bind_context(cpu_set_t *new_context, cpu_set_t *old_context);
 
+/**
+ * Check if the given CPU is offline.
+ * Returns 1 if offline, 0 if online and -1 on failure.
+ */
+int is_cpu_offline(int cpu);
+
 #endif /* _h_util */

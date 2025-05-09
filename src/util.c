@@ -128,3 +128,20 @@ int bind_context(cpu_set_t *new_context, cpu_set_t *old_context) {
 
   return 0;
 }
+
+int is_cpu_offline(int cpu) {
+  cpu_set_t cpu_context;
+  CPU_ZERO(&cpu_context);
+
+  if (sched_getaffinity(0, sizeof(cpu_set_t), &cpu_context) == -1) {
+    warn("Could not retrieve CPU affinity of process");
+    return -1;
+  }
+
+  if (!CPU_ISSET(cpu, &cpu_context)) {
+    warn("CPU %d is offline", cpu);
+    return 1;
+  }
+
+  return 0;
+}

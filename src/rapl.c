@@ -83,16 +83,13 @@ static int build_topology() {
   int i_on = 0;
   for (int i = 0; i < os_cpu_count; i++) {
 
-    cpu_set_t cpu_context;
-    CPU_ZERO(&cpu_context);
-    if (sched_getaffinity(0, sizeof(cpu_set_t), &cpu_context) == -1) {
-      warn("Could not retrieve CPU affinity of process");
+    switch(is_cpu_offline(i)){
+    case 1:
+      continue;
+    case -1:
       return -1;
     }
-    if (!CPU_ISSET(i, &cpu_context)) {
-      warn("CPU %d is offline", i);
-      continue;
-    }
+
     if (get_core_information(i, &(os_map[i_on])) != 0) {
       return -1;
     }
