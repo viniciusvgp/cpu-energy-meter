@@ -73,20 +73,35 @@ static int build_topology() {
   assert(pkg_map == NULL);
 
   const long os_cpu_count = sysconf(_SC_NPROCESSORS_CONF);
+  const long os_onlinecpu_count = sysconf(_SC_NPROCESSORS_ONLN);
   assert(os_cpu_count < INT_MAX);
+  assert(os_onlinecpu_count < INT_MAX);
   int max_pkg = 0;
 
   // Construct an os map: os_map[APIC_ID ... APIC_ID]
-  APIC_ID_t os_map[os_cpu_count];
+  APIC_ID_t os_map[os_onlinecpu_count];
+  int i_on = 0;
   for (int i = 0; i < os_cpu_count; i++) {
 
-    if (get_core_information(i, &(os_map[i])) != 0) {
+    cpu_set_t cpu_context;
+    CPU_ZERO(&cpu_context);
+    if (sched_getaffinity(0, sizeof(cpu_set_t), &cpu_context) == -1) {
+      warn("Could not retrieve CPU affinity of process");
+      return -1;
+    }
+    if (!CPU_ISSET(i, &cpu_context)) {
+      warn("CPU %d is offline", i);
+      continue;
+    }
+    if (get_core_information(i, &(os_map[i_on])) != 0) {
       return -1;
     }
 
-    if (os_map[i].pkg_id > max_pkg) {
-      max_pkg = os_map[i].pkg_id;
+    if (os_map[i_on].pkg_id > max_pkg) {
+      max_pkg = os_map[i_on].pkg_id;
     }
+
+    i_on++; // online CPUs
   }
 
   num_nodes = max_pkg + 1;
@@ -94,7 +109,7 @@ static int build_topology() {
   // Construct a pkg map: pkg_map[pkg id] = (os_id of first thread on pkg)
   pkg_map = (int *)malloc(num_nodes * sizeof(int));
 
-  for (int i = 0; i < os_cpu_count; i++) {
+  for (int i = 0; i < os_onlinecpu_count; i++) {
     int p = os_map[i].pkg_id;
     assert(p < num_nodes);
     if (os_map[i].smt_id == 0 && os_map[i].core_id == 0) {
